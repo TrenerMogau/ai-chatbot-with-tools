@@ -46,6 +46,9 @@ export interface DBChat {
   updated_at: number
 }
 
+import { formatChatTitle } from "@/lib/utils"
+export { formatChatTitle }
+
 // Database helper functions:
 export function getOrCreateChat(
   id: string,
@@ -57,7 +60,7 @@ export function getOrCreateChat(
   if (existing) return existing
 
   const now = Date.now()
-  const title = (firstMessageText?.slice(0, 40) || "New Chat").trim()
+  const title = formatChatTitle(firstMessageText)
   db.prepare(
     `
     INSERT INTO chats (id, title, model, created_at, updated_at)
@@ -66,6 +69,16 @@ export function getOrCreateChat(
   ).run(id, title, model, now, now)
 
   return { id, title, model, created_at: now, updated_at: now }
+}
+
+export function updateChatTitle(id: string, title: string) {
+  const clean = title.replace(/["'\n]/g, "").trim()
+  if (!clean) return
+  db.prepare("UPDATE chats SET title = ?, updated_at = ? WHERE id = ?").run(
+    clean,
+    Date.now(),
+    id
+  )
 }
 
 export function getAllChats(): DBChat[] {

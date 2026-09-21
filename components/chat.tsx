@@ -26,6 +26,7 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller"
+import { formatChatTitle } from "@/lib/utils"
 
 export function Chat({
   id,
@@ -44,18 +45,55 @@ export function Chat({
   const { messages, sendMessage, status, stop, error, addToolOutput } =
     useChat<ChatUIMessage>({
       id: chatId,
-      messages:initialMessages,
+      messages: initialMessages,
       // Resume the conversation automatically once the user has answered the
       // ask_user questionnaire.
       sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+      onFinish: async () => {
+        // If this was the first exchange, fetch the refined AI title
+        if (messages.length <= 1) {
+          try {
+            const res = await fetch(`/api/chat/title?chatId=${chatId}`)
+            if (res.ok) {
+              const data = (await res.json()) as { title?: string }
+              if (data.title) {
+                window.dispatchEvent(
+                  new CustomEvent("chat-updated", {
+                    detail: { id: chatId, title: data.title },
+                  })
+                )
+              }
+            }
+          } catch {
+            // Ignore
+          }
+        }
+      },
     })
 
   const handleSend = (text: string) => {
+    if (!text.trim()) return
+
     // If we are on the root "/" page, sync the URL to /chat/<chatId>
-    if (pathname === "/") {
+    if (pathname === "/" || pathname === "/chat") {
       window.history.replaceState(null, "", `/chat/${chatId}`)
-      router.refresh() // re-triggers server components like the sidebar to show the new chat!
     }
+
+    // If this is the start of a new chat, notify the sidebar immediately
+    if (messages.length === 0) {
+      window.dispatchEvent(
+        new CustomEvent("chat-created", {
+          detail: {
+            id: chatId,
+            title: formatChatTitle(text),
+            model: resolvedModel,
+            created_at: Date.now(),
+            updated_at: Date.now(),
+          },
+        })
+      )
+    }
+
     sendMessage({ text }, { body: { model: resolvedModel, chatId } })
   }
 
@@ -89,14 +127,7 @@ export function Chat({
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Suggestions
-                onSelect={(prompt) =>
-                  sendMessage(
-                    { text: prompt },
-                    { body: { model: resolvedModel } }
-                  )
-                }
-              />
+              <Suggestions onSelect={handleSend} />
             </EmptyContent>
           </Empty>
         </div>
@@ -133,7 +164,7 @@ export function Chat({
                       tool: "ask_user",
                       toolCallId,
                       output: answer,
-                      options: { body: { model: resolvedModel } },
+                      options: { body: { model: resolvedModel, chatId } },
                     })
                   }
                 />
@@ -156,9 +187,7 @@ export function Chat({
           model={resolvedModel}
           onModelChange={setModel}
           isBusy={isBusy}
-          onSubmit={(text) =>
-            sendMessage({ text }, { body: { model: resolvedModel } })
-          }
+          onSubmit={handleSend}
           onStop={() => stop()}
         />
       </div>

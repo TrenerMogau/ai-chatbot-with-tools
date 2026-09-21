@@ -11,18 +11,13 @@ const baseTools = {
 }
 
 export function getTools(modelId: string) {
-  return  baseTools
+  return baseTools
 }
 
 export type ChatUIMessage = UIMessage<
   unknown,
   UIDataTypes,
-  InferUITools<typeof baseTools> & {
-    web_search: {
-      input: { query?: string }
-      output: unknown
-    }
-  }
+  InferUITools<typeof baseTools>
 >
 
 export type ChatMessagePart = ChatUIMessage["parts"][number]

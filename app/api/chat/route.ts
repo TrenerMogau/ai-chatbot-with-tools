@@ -1,6 +1,7 @@
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
+  generateText,
   isStepCount,
   streamText,
   toUIMessageStream,
@@ -9,7 +10,7 @@ import {
 import { DEFAULT_MODEL, isModelAllowed } from "@/lib/models"
 import { getTools, type ChatUIMessage } from "@/tools"
 import { kodekloudClient } from "@/lib/kodekloud"
-import { getOrCreateChat, saveMessage } from "@/lib/db"
+import { getOrCreateChat, saveMessage, updateChatTitle } from "@/lib/db"
 
 export const maxDuration = 30
 const MAX_OUTPUT_TOKENS = 8192
@@ -47,10 +48,10 @@ export async function POST(req: Request) {
 
   // 1. Get or create the chat session and persist the latest user message
   const lastUserMessage = messages.findLast((m) => m.role === "user")
+  let promptPreview: string | undefined
   if (lastUserMessage) {
     const textPart = lastUserMessage.parts.find((p) => p.type === "text")
-    const promptPreview =
-      textPart && "text" in textPart ? textPart.text : undefined
+    promptPreview = textPart && "text" in textPart ? textPart.text : undefined
     getOrCreateChat(chatId, modelId, promptPreview)
     saveMessage(chatId, lastUserMessage)
   }
@@ -79,6 +80,26 @@ export async function POST(req: Request) {
         )
         if (lastAssistantMessage) {
           saveMessage(chatId, lastAssistantMessage)
+        }
+
+        // If this is the first turn, generate a high-quality concise title
+        const userMessages = messages.filter((m) => m.role === "user")
+        if (userMessages.length <= 1 && promptPreview) {
+          try {
+            const { text: aiTitle } = await generateText({
+              model: kodekloudClient.chat(modelId),
+              system:
+                "You generate clean, short titles for chat conversations. Output ONLY the title (3 to 5 words max). No punctuation at the end, no quotes, no conversational filler.",
+              prompt: `User's first message: "${promptPreview}"\nTitle:`,
+              maxOutputTokens: 20,
+            })
+            const clean = aiTitle.replace(/["'\n]/g, "").trim()
+            if (clean) {
+              updateChatTitle(chatId, clean)
+            }
+          } catch {
+            // Keep existing formatted title if generation fails
+          }
         }
       },
     }),

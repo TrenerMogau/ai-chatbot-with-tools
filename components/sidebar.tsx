@@ -1,10 +1,50 @@
-import Link from "next/link"
-import { MessageSquareIcon, PlusIcon } from "lucide-react"
-import { getAllChats } from "@/lib/db"
-import { Button } from "@/components/ui/button"
+"use client"
 
-export function Sidebar() {
-  const chats = getAllChats()
+import * as React from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { MessageSquareIcon, PlusIcon } from "lucide-react"
+import { type DBChat } from "@/lib/db"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+
+export function Sidebar({ initialChats = [] }: { initialChats?: DBChat[] }) {
+  const [chats, setChats] = React.useState<DBChat[]>(initialChats)
+  const pathname = usePathname()
+
+  React.useEffect(() => {
+    setChats(initialChats)
+  }, [initialChats])
+
+  React.useEffect(() => {
+    const handleChatCreated = (e: Event) => {
+      const customEvent = e as CustomEvent<DBChat>
+      if (!customEvent.detail) return
+      setChats((prev) => {
+        if (prev.some((c) => c.id === customEvent.detail.id)) return prev
+        return [customEvent.detail, ...prev]
+      })
+    }
+
+    const handleChatUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ id: string; title: string }>
+      if (!customEvent.detail) return
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === customEvent.detail.id
+            ? { ...c, title: customEvent.detail.title }
+            : c
+        )
+      )
+    }
+
+    window.addEventListener("chat-created", handleChatCreated)
+    window.addEventListener("chat-updated", handleChatUpdated)
+    return () => {
+      window.removeEventListener("chat-created", handleChatCreated)
+      window.removeEventListener("chat-updated", handleChatUpdated)
+    }
+  }, [])
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-muted/30">
@@ -32,16 +72,26 @@ export function Sidebar() {
             No chats yet.
           </div>
         ) : (
-          chats.map((chat) => (
-            <Link
-              key={chat.id}
-              href={`/chat/${chat.id}`}
-              className="flex items-center gap-2 truncate rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <MessageSquareIcon className="size-4 shrink-0" />
-              <span className="truncate">{chat.title || "Untitled Chat"}</span>
-            </Link>
-          ))
+          chats.map((chat) => {
+            const isActive = pathname === `/chat/${chat.id}`
+            return (
+              <Link
+                key={chat.id}
+                href={`/chat/${chat.id}`}
+                className={cn(
+                  "flex items-center gap-2 truncate rounded-lg px-3 py-2 text-sm transition-colors",
+                  isActive
+                    ? "bg-accent font-medium text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground"
+                )}
+              >
+                <MessageSquareIcon className="size-4 shrink-0" />
+                <span className="truncate">
+                  {chat.title || "Untitled Chat"}
+                </span>
+              </Link>
+            )
+          })
         )}
       </div>
     </aside>
