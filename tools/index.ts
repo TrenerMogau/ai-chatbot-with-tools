@@ -2,16 +2,16 @@ import { type InferUITools, type UIDataTypes, type UIMessage } from "ai"
 
 import { askUser } from "./ask_user"
 import { githubRepo } from "./github_repo"
-import { getWebSearch } from "./web_search"
+import { webSearchTool } from "./web_search"
 
 const baseTools = {
   github_repo: githubRepo,
   ask_user: askUser,
+  web_search: webSearchTool,
 }
 
 export function getTools(modelId: string) {
-  const webSearch = getWebSearch(modelId)
-  return webSearch ? { ...baseTools, web_search: webSearch } : baseTools
+  return  baseTools
 }
 
 export type ChatUIMessage = UIMessage<

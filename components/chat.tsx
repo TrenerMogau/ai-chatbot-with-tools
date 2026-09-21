@@ -26,11 +26,21 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller"
 
-export function Chat({ models }: { models: GatewayModel[] }) {
+export function Chat({
+  id,
+  initialMessages,
+  models,
+}: {
+  id?: string
+  initialMessages?: ChatUIMessage[]
+  models: GatewayModel[]
+}) {
   const [model, setModel] = React.useState(models[0]?.id ?? "")
 
   const { messages, sendMessage, status, stop, error, addToolOutput } =
     useChat<ChatUIMessage>({
+      id: chatId,
+      initialMessages,
       // Resume the conversation automatically once the user has answered the
       // ask_user questionnaire.
       sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
