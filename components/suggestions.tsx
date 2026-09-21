@@ -11,7 +11,7 @@ const suggestions = [
   {
     label: "What's new in Next.js",
     prompt:
-      "Search the web for the latest Next.js release and summarize what's new.",
+      "What are the latest latest Next.js release and summarize what's new.",
   },
   {
     label: "Look up a repo",

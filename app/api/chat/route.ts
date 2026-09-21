@@ -9,6 +9,7 @@ import {
 
 import { DEFAULT_MODEL, isModelAllowed } from "@/lib/models"
 import { getTools, type ChatUIMessage } from "@/tools"
+import { kodekloudClient } from "@/lib/kodekloud"
 
 export const maxDuration = 30
 
@@ -51,12 +52,15 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: modelId,
+    model: kodekloudClient.chat(modelId),
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: isStepCount(5),
     maxOutputTokens: MAX_OUTPUT_TOKENS,
     abortSignal: req.signal,
+    onFinish: async ({response})=>{
+      // to save message to the db. 
+    }
   })
 
   return createUIMessageStreamResponse({

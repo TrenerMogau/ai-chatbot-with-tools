@@ -62,7 +62,7 @@ export function Chat({ models }: { models: GatewayModel[] }) {
               <EmptyTitle>What can I help with?</EmptyTitle>
               <EmptyDescription>
                 Pick a model and start chatting. Responses stream through the
-                Vercel AI Gateway.
+                KodeKloud AI Playground.
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>

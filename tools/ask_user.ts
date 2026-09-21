@@ -11,8 +11,8 @@ export const askUser = tool({
           question: z.string().describe("The question to ask"),
           choices: z
             .array(z.string())
-            .length(3)
-            .describe("Exactly three short answer choices"),
+            .length(4)
+            .describe("Exactly four short answer choices"),
         })
       )
       .min(1)
