@@ -4,6 +4,7 @@ import "./globals.css"
 import { SiteHeader } from "@/components/site-header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
+import { Sidebar } from "@/components/sidebar"
 
 const fontSans = Geist({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -30,9 +31,15 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>
-          <div className="flex h-svh flex-col">
-            <SiteHeader />
-            {children}
+          <div className="flex h-svh w-full overflow-hidden">
+            {/* 1. Left column: Sidebar */}
+            <Sidebar />
+
+            {/* 2. Right column: Header + Main chat */}
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              <SiteHeader />
+              <main className="flex min-h-0 flex-1 flex-col">{children}</main>
+            </div>
           </div>
         </ThemeProvider>
       </body>

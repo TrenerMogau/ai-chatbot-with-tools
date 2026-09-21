@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter, usePathname } from "next/navigation"
 import { useChat } from "@ai-sdk/react"
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import { type GatewayModel } from "@/lib/models"
@@ -35,16 +36,28 @@ export function Chat({
   initialMessages?: ChatUIMessage[]
   models: GatewayModel[]
 }) {
+  const [chatId] = React.useState(() => id ?? crypto.randomUUID())
   const [model, setModel] = React.useState(models[0]?.id ?? "")
+  const router = useRouter()
+  const pathname = usePathname()
 
   const { messages, sendMessage, status, stop, error, addToolOutput } =
     useChat<ChatUIMessage>({
       id: chatId,
-      initialMessages,
+      messages:initialMessages,
       // Resume the conversation automatically once the user has answered the
       // ask_user questionnaire.
       sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     })
+
+  const handleSend = (text: string) => {
+    // If we are on the root "/" page, sync the URL to /chat/<chatId>
+    if (pathname === "/") {
+      window.history.replaceState(null, "", `/chat/${chatId}`)
+      router.refresh() // re-triggers server components like the sidebar to show the new chat!
+    }
+    sendMessage({ text }, { body: { model: resolvedModel, chatId } })
+  }
 
   const resolvedModel = models.some((m) => m.id === model)
     ? model

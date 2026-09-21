@@ -22,9 +22,10 @@ export const webSearchTool = tool({
     }),
   ]),
   execute: async ({ query }, { abortSignal }) => {
-    const apiKey = process.env.FREE_AI_API_KEY
-    const baseUrl =
-      process.env.FREE_AI_BASE_URL || "https://api.free.ai/v1/search/"
+    const apiKey = process.env.TAVILY_API_KEY || ""
+    const baseUrl = (
+      process.env.FREE_AI_BASE_URL || "https://api.free.ai"
+    ).replace(/\/+$/, "")
 
     if (!apiKey) {
       return {
@@ -33,8 +34,8 @@ export const webSearchTool = tool({
       }
     }
 
-    // Set an 8-second timeout so a slow search API does not hang your chat stream
-    const timeout = AbortSignal.timeout(8000)
+    // Set an 10-second timeout so a slow search API does not hang your chat stream
+    const timeout = AbortSignal.timeout(10000)
     const signal = abortSignal
       ? AbortSignal.any([abortSignal, timeout])
       : timeout
@@ -53,7 +54,7 @@ export const webSearchTool = tool({
       })
 
       if (!response.ok) {
-        console.error(response.body);
+        console.error(response.body)
         return {
           error:
             "Search service is currently unavailable. Please try again later or contact support.",
@@ -78,7 +79,7 @@ export const webSearchTool = tool({
 
       return { results }
     } catch (err) {
-      console.error(err);
+      console.error(err)
       return {
         error:
           "Search service is currently unavailable. Please try again later or contact support.",
