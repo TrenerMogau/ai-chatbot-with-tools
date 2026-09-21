@@ -38,6 +38,21 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id);
 `)
 
+// Self-healing migration: assign unique UUIDs to any legacy empty-id records
+try {
+  const emptyRows = db
+    .prepare("SELECT rowid FROM messages WHERE id = '' OR id IS NULL")
+    .all() as { rowid: number }[]
+  for (const row of emptyRows) {
+    db.prepare("UPDATE messages SET id = ? WHERE rowid = ?").run(
+      crypto.randomUUID(),
+      row.rowid
+    )
+  }
+} catch {
+  // Ignore migration error
+}
+
 export interface DBChat {
   id: string
   title: string
@@ -99,7 +114,7 @@ export function getChatMessages(chatId: string): ChatUIMessage[] {
     SELECT id, role, parts, created_at 
     FROM messages 
     WHERE chat_id = ? 
-    ORDER BY created_at ASC
+    ORDER BY created_at ASC, rowid ASC
   `
     )
     .all(chatId) as {
@@ -109,25 +124,66 @@ export function getChatMessages(chatId: string): ChatUIMessage[] {
     created_at: number
   }[]
 
-  return rows.map((row) => ({
-    id: row.id,
-    role: row.role as "user" | "assistant",
-    parts: JSON.parse(row.parts),
-  }))
+  return rows.map((row) => {
+    let parts: ChatUIMessage["parts"] = []
+    try {
+      parts = JSON.parse(row.parts)
+    } catch {
+      parts = [{ type: "text", text: "" }]
+    }
+    return {
+      id: row.id,
+      role: row.role as "user" | "assistant",
+      parts,
+    }
+  })
+}
+
+// Saves a batch of messages in a single transaction, preserving original timestamps & order
+export function saveMessages(
+  chatId: string,
+  messages: Array<{ id?: string; role: string; parts: unknown }>
+) {
+  if (!messages || messages.length === 0) return
+
+  const now = Date.now()
+  const upsert = db.prepare(`
+    INSERT INTO messages (id, chat_id, role, parts, created_at)
+    VALUES (@id, @chatId, @role, @parts, @createdAt)
+    ON CONFLICT(id) DO UPDATE SET
+      parts = excluded.parts,
+      role = excluded.role
+  `)
+
+  const insertBatch = db.transaction(
+    (msgs: Array<{ id?: string; role: string; parts: unknown }>) => {
+      msgs.forEach((msg, index) => {
+        const id =
+          typeof msg.id === "string" && msg.id.trim().length > 0
+            ? msg.id
+            : crypto.randomUUID()
+
+        upsert.run({
+          id,
+          chatId,
+          role: msg.role,
+          parts: JSON.stringify(msg.parts ?? []),
+          createdAt: now + index, // Guarantees strict sequential order within the batch
+        })
+      })
+      db.prepare("UPDATE chats SET updated_at = ? WHERE id = ?").run(
+        now,
+        chatId
+      )
+    }
+  )
+
+  insertBatch(messages)
 }
 
 export function saveMessage(
   chatId: string,
-  message: { id: string; role: string; parts: unknown }
+  message: { id?: string; role: string; parts: unknown }
 ) {
-  const now = Date.now()
-  db.prepare(
-    `
-    INSERT OR REPLACE INTO messages (id, chat_id, role, parts, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `
-  ).run(message.id, chatId, message.role, JSON.stringify(message.parts), now)
-
-  // Update chat updated_at
-  db.prepare("UPDATE chats SET updated_at = ? WHERE id = ?").run(now, chatId)
+  saveMessages(chatId, [message])
 }

@@ -24,6 +24,11 @@ export type ChatMessagePart = ChatUIMessage["parts"][number]
 
 export type TextMessagePart = Extract<ChatMessagePart, { type: "text" }>
 
+export type ReasoningMessagePart = Extract<
+  ChatMessagePart,
+  { type: "reasoning" }
+>
+
 export type SourceUrlPart = Extract<ChatMessagePart, { type: "source-url" }>
 
 export type GithubRepoToolPart = Extract<

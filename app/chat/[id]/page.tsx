@@ -14,5 +14,12 @@ export default async function SavedChatPage({
 
   const messages = getChatMessages(id)
 
-  return <Chat id={chat.id} initialMessages={messages} models={MODELS} />
+  return (
+    <Chat
+      key={chat.id}
+      id={chat.id}
+      initialMessages={messages}
+      models={MODELS}
+    />
+  )
 }

@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  return <Chat models={MODELS} />
+  return <Chat key="new-chat" models={MODELS} />
 }
