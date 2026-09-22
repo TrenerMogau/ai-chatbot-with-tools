@@ -13,7 +13,10 @@ export async function PATCH(
     return Response.json({ success: true })
   } catch {
     return Response.json(
-      { error: "Something went wrong. Please try again later or contact support." },
+      {
+        error:
+          "Something went wrong. Please try again later or contact support.",
+      },
       { status: 500 }
     )
   }
@@ -29,7 +32,10 @@ export async function DELETE(
     return Response.json({ success: true })
   } catch {
     return Response.json(
-      { error: "Something went wrong. Please try again later or contact support." },
+      {
+        error:
+          "Something went wrong. Please try again later or contact support.",
+      },
       { status: 500 }
     )
   }

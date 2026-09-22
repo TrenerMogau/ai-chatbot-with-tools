@@ -12,7 +12,10 @@ export async function POST(req: Request) {
     return Response.json({ folder })
   } catch {
     return Response.json(
-      { error: "Something went wrong. Please try again later or contact support." },
+      {
+        error:
+          "Something went wrong. Please try again later or contact support.",
+      },
       { status: 500 }
     )
   }

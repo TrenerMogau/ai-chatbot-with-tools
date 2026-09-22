@@ -91,14 +91,23 @@ export function Chat({
 
     // If this is the start of a new chat, notify the sidebar immediately
     if (messages.length === 0) {
+      const formattedTitle = formatChatTitle(text)
       window.dispatchEvent(
         new CustomEvent("chat-created", {
           detail: {
             id: chatId,
-            title: formatChatTitle(text),
+            title: formattedTitle,
             model: resolvedModel,
             created_at: Date.now(),
             updated_at: Date.now(),
+          },
+        })
+      )
+      window.dispatchEvent(
+        new CustomEvent("chat-updated", {
+          detail: {
+            id: chatId,
+            title: formattedTitle,
           },
         })
       )

@@ -64,8 +64,7 @@ export function MarkdownCode({
   const { resolvedTheme } = useTheme()
   const code = String(children).replace(/\n$/, "")
   const language = /language-([\w-]+)/.exec(className || "")?.[1]
-  const syntaxTheme =
-    resolvedTheme === "dark" ? "github-dark" : "github-light"
+  const syntaxTheme = resolvedTheme === "dark" ? "github-dark" : "github-light"
 
   if (inline) {
     return (

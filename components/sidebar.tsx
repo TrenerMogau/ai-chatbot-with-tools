@@ -49,6 +49,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
+const MIN_SIDEBAR_WIDTH = 200
+const MAX_SIDEBAR_WIDTH = 480
+const DEFAULT_SIDEBAR_WIDTH = 260
+
 export function Sidebar({
   initialChats = [],
   initialFolders = [],
@@ -58,7 +62,9 @@ export function Sidebar({
 }) {
   const [chats, setChats] = React.useState<DBChat[]>(initialChats)
   const [folders, setFolders] = React.useState<DBFolder[]>(initialFolders)
-  const [openFolders, setOpenFolders] = React.useState<Record<string, boolean>>({})
+  const [openFolders, setOpenFolders] = React.useState<Record<string, boolean>>(
+    {}
+  )
 
   // Sidebar collapse state
   const [isCollapsed, setIsCollapsed] = React.useState(false)
@@ -67,7 +73,9 @@ export function Sidebar({
   const [editingChatId, setEditingChatId] = React.useState<string | null>(null)
   const [editingChatTitle, setEditingChatTitle] = React.useState("")
 
-  const [editingFolderId, setEditingFolderId] = React.useState<string | null>(null)
+  const [editingFolderId, setEditingFolderId] = React.useState<string | null>(
+    null
+  )
   const [editingFolderName, setEditingFolderName] = React.useState("")
 
   const [isCreatingFolder, setIsCreatingFolder] = React.useState(false)
@@ -76,7 +84,9 @@ export function Sidebar({
   // Modal dialog states
   const [movingChat, setMovingChat] = React.useState<DBChat | null>(null)
   const [chatToDelete, setChatToDelete] = React.useState<DBChat | null>(null)
-  const [folderToDelete, setFolderToDelete] = React.useState<DBFolder | null>(null)
+  const [folderToDelete, setFolderToDelete] = React.useState<DBFolder | null>(
+    null
+  )
 
   const pathname = usePathname()
   const router = useRouter()
@@ -103,6 +113,100 @@ export function Sidebar({
       return next
     })
   }
+
+  // Sidebar resize state
+  const [sidebarWidth, setSidebarWidth] = React.useState(DEFAULT_SIDEBAR_WIDTH)
+  const [isResizing, setIsResizing] = React.useState(false)
+
+  React.useEffect(() => {
+    try {
+      const savedWidth = localStorage.getItem("sidebar-width")
+      if (savedWidth !== null) {
+        const parsed = parseInt(savedWidth, 10)
+        if (!isNaN(parsed)) {
+          setSidebarWidth(
+            Math.min(Math.max(parsed, MIN_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH)
+          )
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }, [])
+
+  const handleResetWidth = () => {
+    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)
+    try {
+      localStorage.setItem("sidebar-width", String(DEFAULT_SIDEBAR_WIDTH))
+    } catch {
+      // Ignore
+    }
+  }
+
+  const startResizing = React.useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault()
+      setIsResizing(true)
+      const startX = e.clientX
+      const startWidth = sidebarWidth
+
+      const onPointerMove = (moveEvent: PointerEvent) => {
+        const delta = moveEvent.clientX - startX
+        const rawWidth = startWidth + delta
+
+        if (rawWidth < 130) {
+          setIsCollapsed(true)
+          try {
+            localStorage.setItem("sidebar-collapsed", "true")
+          } catch {
+            // Ignore
+          }
+          return
+        } else if (isCollapsed) {
+          setIsCollapsed(false)
+          try {
+            localStorage.setItem("sidebar-collapsed", "false")
+          } catch {
+            // Ignore
+          }
+        }
+
+        const clampedWidth = Math.min(
+          Math.max(rawWidth, MIN_SIDEBAR_WIDTH),
+          MAX_SIDEBAR_WIDTH
+        )
+        setSidebarWidth(clampedWidth)
+      }
+
+      const onPointerUp = (upEvent: PointerEvent) => {
+        setIsResizing(false)
+        document.body.style.cursor = ""
+        document.body.style.userSelect = ""
+        window.removeEventListener("pointermove", onPointerMove)
+        window.removeEventListener("pointerup", onPointerUp)
+
+        const finalDelta = upEvent.clientX - startX
+        const finalRaw = startWidth + finalDelta
+        if (finalRaw >= 130) {
+          const finalWidth = Math.min(
+            Math.max(finalRaw, MIN_SIDEBAR_WIDTH),
+            MAX_SIDEBAR_WIDTH
+          )
+          try {
+            localStorage.setItem("sidebar-width", String(finalWidth))
+          } catch {
+            // Ignore
+          }
+        }
+      }
+
+      document.body.style.cursor = "col-resize"
+      document.body.style.userSelect = "none"
+      window.addEventListener("pointermove", onPointerMove)
+      window.addEventListener("pointerup", onPointerUp)
+    },
+    [sidebarWidth, isCollapsed]
+  )
 
   React.useEffect(() => {
     setChats(initialChats)
@@ -231,7 +335,9 @@ export function Sidebar({
       await fetch(`/api/folders/${folderId}`, { method: "DELETE" })
       setFolders((prev) => prev.filter((f) => f.id !== folderId))
       setChats((prev) =>
-        prev.map((c) => (c.folder_id === folderId ? { ...c, folder_id: null } : c))
+        prev.map((c) =>
+          c.folder_id === folderId ? { ...c, folder_id: null } : c
+        )
       )
     } catch {
       // Ignore
@@ -245,6 +351,26 @@ export function Sidebar({
       ...prev,
       [folderId]: !prev[folderId],
     }))
+  }
+
+  const handleCreateChatInFolder = async (folderId: string) => {
+    try {
+      const res = await fetch("/api/chats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId }),
+      })
+      if (res.ok) {
+        const data = (await res.json()) as { chat?: DBChat }
+        if (data.chat) {
+          setChats((prev) => [data.chat!, ...prev])
+          setOpenFolders((prev) => ({ ...prev, [folderId]: true }))
+          router.push(`/chat/${data.chat.id}`)
+        }
+      }
+    } catch {
+      // Ignore
+    }
   }
 
   // Chat actions
@@ -317,8 +443,8 @@ export function Sidebar({
   // ----------------------------------------------------
   if (isCollapsed) {
     return (
-      <aside className="relative flex h-full w-14 shrink-0 flex-col items-center border-r border-border bg-muted/20 py-3 transition-all duration-300 select-none">
-        <div className="flex flex-col items-center gap-2">
+      <aside className="relative flex h-full w-14 shrink-0 flex-col items-center justify-between border-r border-border bg-muted/20 py-3 transition-all duration-300 select-none">
+        <div className="flex w-full flex-col items-center gap-2">
           {/* Expand Trigger */}
           <Button
             variant="ghost"
@@ -355,25 +481,26 @@ export function Sidebar({
           >
             <FolderPlusIcon className="size-4" />
           </Button>
-        </div>
 
-        <div className="my-3 h-px w-8 bg-border" />
+          <div className="my-2 h-px w-8 bg-border" />
 
-        {/* Collapsed icon list */}
-        <div className="flex flex-1 flex-col items-center gap-2 overflow-y-auto w-full px-1">
-          {chats.slice(0, 10).map((chat) => (
-            <Link
-              key={chat.id}
-              href={`/chat/${chat.id}`}
-              title={chat.title || "Chat"}
-              className={cn(
-                "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                pathname === `/chat/${chat.id}` && "bg-accent font-medium text-primary"
-              )}
-            >
-              <MessageSquareIcon className="size-4" />
-            </Link>
-          ))}
+          {/* Collapsed icon list */}
+          <div className="flex w-full flex-1 flex-col items-center gap-2 overflow-y-auto px-1">
+            {chats.slice(0, 10).map((chat) => (
+              <Link
+                key={chat.id}
+                href={`/chat/${chat.id}`}
+                title={chat.title || "Chat"}
+                className={cn(
+                  "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                  pathname === `/chat/${chat.id}` &&
+                    "bg-accent font-medium text-primary"
+                )}
+              >
+                <MessageSquareIcon className="size-4" />
+              </Link>
+            ))}
+          </div>
         </div>
       </aside>
     )
@@ -384,37 +511,67 @@ export function Sidebar({
   // ----------------------------------------------------
   return (
     <>
-      <aside className="relative flex h-full w-64 shrink-0 flex-col border-r border-border bg-muted/20 transition-all duration-300 select-none">
-        {/* Action Header: New Chat, New Project, and Collapse Button */}
-        <div className="flex items-center gap-1.5 border-b border-border p-3">
-          <Button
-            variant="outline"
-            className="flex-1 justify-start gap-2 h-8 text-xs font-medium"
-            render={<Link href="/" />}
-            nativeButton={false}
-          >
-            <PlusIcon className="size-3.5 shrink-0" />
-            <span className="truncate">New Chat</span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            title="New Project"
-            onClick={() => setIsCreatingFolder(true)}
-            className="rounded-lg"
-          >
-            <FolderPlusIcon className="size-3.5" />
-          </Button>
-
+      <aside
+        style={{ width: `${sidebarWidth}px` }}
+        className={cn(
+          "relative flex h-full shrink-0 flex-col border-r border-border bg-muted/20 select-none",
+          !isResizing && "transition-[width] duration-200 ease-out"
+        )}
+      >
+        {/* Resize Handle */}
+        <div
+          onPointerDown={startResizing}
+          onDoubleClick={handleResetWidth}
+          title="Drag to resize sidebar (double-click to reset)"
+          className={cn(
+            "group/resizer absolute top-0 -right-1 z-30 flex h-full w-2.5 cursor-col-resize items-center justify-center transition-colors",
+            isResizing ? "bg-primary/20" : "hover:bg-primary/20"
+          )}
+        >
+          <div
+            className={cn(
+              "h-8 w-0.5 rounded-full transition-colors",
+              isResizing
+                ? "bg-primary"
+                : "bg-transparent group-hover/resizer:bg-primary/60"
+            )}
+          />
+        </div>
+        {/* Top Header: Title & Collapse Button */}
+        <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
+          <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            Workspace
+          </span>
           <Button
             variant="ghost"
             size="icon-xs"
             title="Collapse sidebar"
             onClick={toggleCollapse}
-            className="rounded-lg"
+            className="rounded-lg text-muted-foreground hover:text-foreground"
           >
-            <PanelLeftCloseIcon className="size-3.5" />
+            <PanelLeftCloseIcon className="size-4" />
+          </Button>
+        </div>
+
+        {/* Action Buttons: Each on its own line */}
+        <div className="flex flex-col gap-1.5 border-b border-border p-2.5">
+          <Button
+            variant="outline"
+            className="h-8.5 w-full justify-start gap-2 px-3 text-xs font-medium shadow-xs"
+            render={<Link href="/" />}
+            nativeButton={false}
+          >
+            <PlusIcon className="size-3.5 shrink-0" />
+            <span>New Chat</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            className="h-8.5 w-full justify-start gap-2 border border-transparent px-3 text-xs font-medium text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground"
+            onClick={() => setIsCreatingFolder(true)}
+          >
+            <FolderPlusIcon className="size-3.5 shrink-0" />
+            <span>New Project</span>
           </Button>
         </div>
 
@@ -498,7 +655,7 @@ export function Sidebar({
                       <div className="group flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-accent/40">
                         <button
                           onClick={() => toggleFolder(folder.id)}
-                          className="flex min-w-0 flex-1 items-center gap-2 text-left text-muted-foreground transition-colors group-hover:text-foreground cursor-pointer"
+                          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-muted-foreground transition-colors group-hover:text-foreground"
                         >
                           {isOpen ? (
                             <ChevronDownIcon className="size-3.5 shrink-0" />
@@ -518,34 +675,58 @@ export function Sidebar({
                           </span>
                         </button>
 
-                        {/* Project Dropdown Menu */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            className="rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-accent hover:text-foreground cursor-pointer focus:opacity-100 outline-none"
-                            aria-label="Project actions"
+                        {/* Project Actions: + to add new chat under project, next to ... Dropdown */}
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCreateChatInFolder(folder.id)
+                            }}
+                            className="cursor-pointer rounded p-1 text-muted-foreground opacity-0 transition-opacity outline-none group-hover:opacity-100 hover:bg-accent hover:text-foreground focus:opacity-100"
+                            title="New chat in this project"
+                            aria-label="New chat in this project"
                           >
-                            <MoreHorizontalIcon className="size-3.5" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditingFolderId(folder.id)
-                                setEditingFolderName(folder.name)
-                              }}
+                            <PlusIcon className="size-3.5" />
+                          </button>
+
+                          {/* Project Dropdown Menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              className="cursor-pointer rounded p-1 text-muted-foreground opacity-0 transition-opacity outline-none group-hover:opacity-100 hover:bg-accent hover:text-foreground focus:opacity-100"
+                              aria-label="Project actions"
                             >
-                              <PencilIcon className="size-3.5 mr-2" />
-                              Rename Project
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => setFolderToDelete(folder)}
-                            >
-                              <Trash2Icon className="size-3.5 mr-2" />
-                              Delete Project
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <MoreHorizontalIcon className="size-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleCreateChatInFolder(folder.id)
+                                }
+                              >
+                                <PlusIcon className="mr-2 size-3.5" />
+                                New Chat
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingFolderId(folder.id)
+                                  setEditingFolderName(folder.name)
+                                }}
+                              >
+                                <PencilIcon className="mr-2 size-3.5" />
+                                Rename Project
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => setFolderToDelete(folder)}
+                              >
+                                <Trash2Icon className="mr-2 size-3.5" />
+                                Delete Project
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                     )}
 
@@ -616,6 +797,20 @@ export function Sidebar({
             )}
           </div>
         </div>
+
+        {/* Footer (Reset width if resized) */}
+        {sidebarWidth !== DEFAULT_SIDEBAR_WIDTH && (
+          <div className="flex items-center justify-end border-t border-border px-3 py-1.5">
+            <button
+              type="button"
+              onClick={handleResetWidth}
+              className="cursor-pointer text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+              title="Reset width to default (260px)"
+            >
+              Reset width
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* ---------------------------------------------------- */}
@@ -629,7 +824,8 @@ export function Sidebar({
           <DialogHeader>
             <DialogTitle>Move to Project</DialogTitle>
             <DialogDescription>
-              Select a destination project for &ldquo;{movingChat?.title}&rdquo;.
+              Select a destination project for &ldquo;{movingChat?.title}
+              &rdquo;.
             </DialogDescription>
           </DialogHeader>
 
@@ -640,7 +836,7 @@ export function Sidebar({
                 if (movingChat) handleMoveChat(movingChat.id, null)
               }}
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-left transition-colors hover:bg-accent cursor-pointer",
+                "flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-accent",
                 !movingChat?.folder_id &&
                   "bg-accent/80 font-medium text-foreground"
               )}
@@ -657,7 +853,7 @@ export function Sidebar({
                   if (movingChat) handleMoveChat(movingChat.id, f.id)
                 }}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-left transition-colors hover:bg-accent cursor-pointer",
+                  "flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-accent",
                   movingChat?.folder_id === f.id &&
                     "bg-accent/80 font-medium text-foreground"
                 )}
@@ -691,8 +887,9 @@ export function Sidebar({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;{chatToDelete?.title}&rdquo;?
-              This will permanently remove this chat and all of its messages.
+              Are you sure you want to delete &ldquo;{chatToDelete?.title}
+              &rdquo;? This will permanently remove this chat and all of its
+              messages.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -720,8 +917,9 @@ export function Sidebar({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Project?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete project &ldquo;{folderToDelete?.name}&rdquo;?
-              Chats in this project will not be deleted; they will be moved to unassigned chats.
+              Are you sure you want to delete project &ldquo;
+              {folderToDelete?.name}&rdquo;? Chats in this project will not be
+              deleted; they will be moved to unassigned chats.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -807,7 +1005,7 @@ function ChatItem({
     >
       <Link
         href={`/chat/${chat.id}`}
-        className="flex min-w-0 flex-1 items-center gap-2 truncate cursor-pointer"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 truncate"
       >
         <MessageSquareIcon className="size-3.5 shrink-0" />
         <span className="truncate">{chat.title || "Untitled Chat"}</span>
@@ -817,8 +1015,10 @@ function ChatItem({
       <DropdownMenu>
         <DropdownMenuTrigger
           className={cn(
-            "rounded p-1 text-muted-foreground transition-opacity hover:bg-accent hover:text-foreground cursor-pointer outline-none",
-            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"
+            "cursor-pointer rounded p-1 text-muted-foreground transition-opacity outline-none hover:bg-accent hover:text-foreground",
+            isActive
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100 focus:opacity-100"
           )}
           aria-label="Chat actions"
         >
@@ -826,11 +1026,11 @@ function ChatItem({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem onClick={() => onMove()}>
-            <FolderInputIcon className="size-3.5 mr-2" />
+            <FolderInputIcon className="mr-2 size-3.5" />
             Move to project…
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onStartEdit()}>
-            <PencilIcon className="size-3.5 mr-2" />
+            <PencilIcon className="mr-2 size-3.5" />
             Rename
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -838,7 +1038,7 @@ function ChatItem({
             variant="destructive"
             onClick={() => onRequestDelete()}
           >
-            <Trash2Icon className="size-3.5 mr-2" />
+            <Trash2Icon className="mr-2 size-3.5" />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>

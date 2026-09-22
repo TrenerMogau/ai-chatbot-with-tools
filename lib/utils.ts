@@ -20,7 +20,10 @@ export function safeHttpUrl(url: string): string | undefined {
 export function formatChatTitle(rawText?: string): string {
   if (!rawText) return "New Chat"
 
-  let text = rawText.replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ").trim()
+  let text = rawText
+    .replace(/\r?\n|\r/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
 
   // Remove common conversational opener prefixes
   const fillerRegex =
