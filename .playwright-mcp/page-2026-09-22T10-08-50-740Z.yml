@@ -1,0 +1,87 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - button "New Chat" [ref=e5] [cursor=pointer]
+        - button "New Project / Folder" [ref=e7]
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]: Projects
+          - generic [ref=e11]:
+            - generic [ref=e12]:
+              - button "Tests (0)" [ref=e13]:
+                - generic [ref=e18]: Tests
+                - generic [ref=e19]: (0)
+              - generic [ref=e20]:
+                - button "Rename Project" [ref=e21]
+                - button "Delete Project" [ref=e25]
+            - generic [ref=e29]: Empty project
+          - generic [ref=e31]:
+            - generic [ref=e32]:
+              - button "users (0)" [ref=e33]:
+                - generic [ref=e38]: users
+                - generic [ref=e39]: (0)
+              - generic [ref=e40]:
+                - button "Rename Project" [ref=e41]
+                - button "Delete Project" [ref=e45]
+            - generic [ref=e49]: Empty project
+        - generic [ref=e51]:
+          - generic [ref=e52]: Other Chats
+          - generic [ref=e53]:
+            - link "Plan Birthday Dinner Menu" [ref=e54] [cursor=pointer]:
+              - /url: /chat/2b8f2bb0-50f4-444f-a962-b725702765ef
+            - generic [ref=e58]:
+              - button "Move to project" [ref=e59]
+              - button "Rename chat" [ref=e63]
+              - button "Delete chat" [ref=e67]
+          - generic [ref=e71]:
+            - link "Hey Bro Greeting" [ref=e72] [cursor=pointer]:
+              - /url: /chat/b74c84db-603f-448d-a977-4b4b3cae09be
+            - generic [ref=e76]:
+              - button "Move to project" [ref=e77]
+              - button "Rename chat" [ref=e81]
+              - button "Delete chat" [ref=e85]
+          - generic [ref=e89]:
+            - link "Next.js Latest Release Summary" [ref=e90] [cursor=pointer]:
+              - /url: /chat/1f728b8d-c898-42a0-bd8e-bbc128382d6f
+            - generic [ref=e94]:
+              - button "Move to project" [ref=e95]
+              - button "Rename chat" [ref=e99]
+              - button "Delete chat" [ref=e103]
+          - generic [ref=e107]:
+            - link "Markdown Short Story" [ref=e108] [cursor=pointer]:
+              - /url: /chat/036d3ce1-e515-4d1c-97fb-673d16d10128
+            - generic [ref=e112]:
+              - button "Move to project" [ref=e113]
+              - button "Rename chat" [ref=e117]
+              - button "Delete chat" [ref=e121]
+          - generic [ref=e125]:
+            - link "Real Madrid Match Result" [ref=e126] [cursor=pointer]:
+              - /url: /chat/6b4cc134-32b3-4b51-8c15-8ed6562e9320
+            - generic [ref=e130]:
+              - button "Move to project" [ref=e131]
+              - button "Rename chat" [ref=e135]
+              - button "Delete chat" [ref=e139]
+    - generic [ref=e143]:
+      - banner [ref=e144]:
+        - paragraph [ref=e145]: Trener's chatbot
+      - main [ref=e146]:
+        - generic [ref=e147]:
+          - generic [ref=e149]:
+            - generic [ref=e150]:
+              - generic [ref=e151]: What can I help with?
+              - generic [ref=e152]: Pick a model and start chatting. Responses stream through the KodeKloud AI Playground.
+            - generic [ref=e154]:
+              - button "Tell me a story" [ref=e155]
+              - button "What's new in Next.js" [ref=e156]
+              - button "Look up a repo" [ref=e157]
+              - button "Plan a dinner" [ref=e158]
+          - group [ref=e161]:
+            - textbox "Send a message…" [ref=e162]
+            - group [ref=e163]:
+              - combobox "Model" [ref=e164]:
+                - generic [ref=e165]: Qwen 3.8 flash
+                - img [aria-hidden]: ▼
+              - textbox [aria-hidden] [ref=e166]: qwen/qwen3.8-flash
+              - button "Send message" [disabled]
+  - button "Open Next.js Dev Tools" [ref=e172] [cursor=pointer]

@@ -1,34 +1,25 @@
+import fs from "fs"
 import { createOpenAI } from "@ai-sdk/openai"
-import { extractReasoningMiddleware, wrapLanguageModel } from "ai"
+import { streamText, extractReasoningMiddleware, wrapLanguageModel, toUIMessageStream } from "ai"
 
-/**
- * Custom fetch wrapper to intercept SSE streams from OpenAI-compatible gateways
- * (like KodeKloud) that emit `choices[0].delta.reasoning_content`.
- *
- * The official @ai-sdk/openai chat completion parser currently ignores `reasoning_content`.
- * By wrapping `reasoning_content` inside `<think>...</think>` tags in `delta.content`,
- * and pairing it with AI SDK's `extractReasoningMiddleware({ tagName: 'think' })`,
- * reasoning is cleanly extracted and emitted as `reasoning-start`, `reasoning-delta`,
- * and `reasoning-end` events for the frontend UI.
- */
-const customFetch: typeof fetch = async (input, init) => {
-  const response = await fetch(input, init)
+const envFile = fs.readFileSync(".env.local", "utf8")
+const env = {}
+for (const line of envFile.split("\n")) {
+  const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/)
+  if (match) {
+    let val = (match[2] || "").trim()
+    if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1)
+    env[match[1]] = val
+  }
+}
 
-  const contentType = response.headers.get("content-type") || ""
-  const urlStr =
-    typeof input === "string"
-      ? input
-      : input instanceof URL
-        ? input.toString()
-        : (input as Request).url
+const baseUrl = env.KODEKLOUD_BASE_URL || "https://api.ai.kodekloud.com/v1"
+const apiKey = env.KODEKLOUD_API_KEY
 
-  // Only intercept streaming chat completions
-  if (
-    !response.ok ||
-    !response.body ||
-    !contentType.includes("text/event-stream") ||
-    !urlStr.includes("/chat/completions")
-  ) {
+const customFetch = async (url, options) => {
+  const response = await fetch(url, options)
+
+  if (!response.ok || !response.body || !url.toString().includes("/chat/completions")) {
     return response
   }
 
@@ -82,33 +73,20 @@ const customFetch: typeof fetch = async (input, init) => {
             const choice = data.choices?.[0]
             const delta = choice?.delta
 
-            if (
-              delta &&
-              "reasoning_content" in delta &&
-              delta.reasoning_content
-            ) {
+            if (delta && "reasoning_content" in delta && delta.reasoning_content) {
               let text = delta.reasoning_content
               if (!isReasoning) {
                 text = "<think>" + text
                 isReasoning = true
               }
               delta.content = text
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
-              )
-            } else if (
-              delta &&
-              ("content" in delta ||
-                "tool_calls" in delta ||
-                choice?.finish_reason)
-            ) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+            } else if (delta && ("content" in delta || "tool_calls" in delta || choice?.finish_reason)) {
               if (isReasoning) {
                 delta.content = "</think>" + (delta.content || "")
                 isReasoning = false
               }
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
-              )
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
             } else {
               controller.enqueue(encoder.encode(line + "\n"))
             }
@@ -117,10 +95,7 @@ const customFetch: typeof fetch = async (input, init) => {
           }
         }
       }
-    },
-    async cancel(reason) {
-      await reader.cancel(reason)
-    },
+    }
   })
 
   return new Response(transformedStream, {
@@ -130,23 +105,47 @@ const customFetch: typeof fetch = async (input, init) => {
   })
 }
 
-/* 
-This client provides access to the kodekloud AI gateway
-specify the api endpoint and the api key to access the models
-*/
-export const kodekloudClient = createOpenAI({
-  baseURL: process.env.KODEKLOUD_BASE_URL || "https://api.ai.kodekloud.com/v1",
-  apiKey: process.env.KODEKLOUD_API_KEY,
+const client = createOpenAI({
+  baseURL: baseUrl,
+  apiKey: apiKey,
   fetch: customFetch,
 })
 
-/**
- * Returns a model wrapped with reasoning extraction middleware.
- * Supports both models emitting <think> tags natively and models emitting reasoning_content deltas.
- */
-export function getKodeKloudModel(modelId: string) {
-  return wrapLanguageModel({
-    model: kodekloudClient.chat(modelId),
+async function test() {
+  const rawModel = client.chat("qwen/qwen3.8-flash")
+  const model = wrapLanguageModel({
+    model: rawModel,
     middleware: extractReasoningMiddleware({ tagName: "think" }),
   })
+
+  const messages = [
+    { id: "1", role: "user", parts: [{ type: "text", text: "What is 12 * 12? Think briefly." }] }
+  ]
+
+  const result = streamText({
+    model,
+    messages: [{ role: "user", content: "What is 12 * 12? Think briefly." }]
+  })
+
+  let onEndPayload = null
+  const uiStream = toUIMessageStream({
+    stream: result.stream,
+    originalMessages: messages,
+    sendReasoning: true,
+    onEnd: async (data) => {
+      onEndPayload = data
+    }
+  })
+
+  const reader = uiStream.getReader()
+  while (true) {
+    const { done } = await reader.read()
+    if (done) break
+  }
+
+  console.log("onEnd updatedMessages count:", onEndPayload?.messages?.length)
+  console.log("onEnd responseMessage parts:", JSON.stringify(onEndPayload?.responseMessage?.parts, null, 2))
 }
+
+test().catch(console.error)
+

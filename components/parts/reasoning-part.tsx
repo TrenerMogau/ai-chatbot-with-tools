@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { BrainIcon } from "lucide-react"
 import {
   ChainOfThought,
@@ -16,14 +17,22 @@ export function ReasoningPart({
   part: ReasoningMessagePart
   isStreaming?: boolean
 }) {
+  const [userToggled, setUserToggled] = React.useState<boolean | null>(null)
+
   if (!part.text && !isStreaming) {
     return null
   }
 
   const isThinking = isStreaming && part.state !== "done"
+  // Auto-expand during thinking unless user manually toggled; collapse once finished
+  const open = userToggled !== null ? userToggled : isThinking
 
   return (
-    <ChainOfThought defaultOpen={isThinking} className="my-2 w-full">
+    <ChainOfThought
+      open={open}
+      onOpenChange={(nextOpen: boolean) => setUserToggled(nextOpen)}
+      className="my-2 w-full"
+    >
       <ChainOfThoughtHeader>
         <div className="flex items-center gap-2">
           <span>{isThinking ? "Thinking…" : "Thought process"}</span>

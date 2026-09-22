@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 import { Sidebar } from "@/components/sidebar"
-import { getAllChats } from "@/lib/db"
+import { getAllChats, getAllFolders } from "@/lib/db"
 
 const fontSans = Geist({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -20,6 +20,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   const chats = getAllChats()
+  const folders = getAllFolders()
 
   return (
     <html
@@ -36,7 +37,7 @@ export default function RootLayout({
         <ThemeProvider>
           <div className="flex h-svh w-full overflow-hidden">
             {/* 1. Left column: Sidebar */}
-            <Sidebar initialChats={chats} />
+            <Sidebar initialChats={chats} initialFolders={folders} />
 
             {/* 2. Right column: Header + Main chat */}
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

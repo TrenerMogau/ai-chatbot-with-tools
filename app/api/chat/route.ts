@@ -9,7 +9,7 @@ import {
 } from "ai"
 import { DEFAULT_MODEL, isModelAllowed } from "@/lib/models"
 import { getTools, type ChatUIMessage } from "@/tools"
-import { kodekloudClient } from "@/lib/kodekloud"
+import { getKodeKloudModel, kodekloudClient } from "@/lib/kodekloud"
 import {
   getOrCreateChat,
   saveMessage,
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 
   // 2. Stream generation
   const result = streamText({
-    model: kodekloudClient.chat(modelId),
+    model: getKodeKloudModel(modelId),
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: isStepCount(5),
