@@ -77,7 +77,7 @@ export function SourcesPart({ parts }: { parts: ChatMessagePart[] }) {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+        className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <GlobeIcon className="size-3.5 text-primary/70" />
         <span>Sources ({sources.length})</span>
@@ -90,7 +90,7 @@ export function SourcesPart({ parts }: { parts: ChatMessagePart[] }) {
       </button>
 
       {isOpen && (
-        <div className="mt-2.5 flex flex-wrap gap-2 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+        <div className="mt-2.5 flex animate-in flex-wrap gap-2 duration-200 fade-in-0 slide-in-from-top-1">
           {sources.map((source, index) => {
             const hostname = getHostname(source.url)
             const title = source.title || hostname

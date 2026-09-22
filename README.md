@@ -55,12 +55,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 Models are defined in [`lib/models.ts`](lib/models.ts):
 
-| Model ID | Name | Capabilities |
-| :--- | :--- | :--- |
-| `qwen/qwen3.8-flash` | Qwen 3.8 Flash (Default) | Fast reasoning, web search, tool calling |
-| `minimax/MiniMax-M2.5` | MiniMax M2.5 | Deep reasoning, high context window |
-| `gpt-oss-120b` | GPT-OSS 120B | Large open-weights reasoning model |
-| `zai/glm-5.3-flash` | GLM 5.3 Flash | Fast general assistance |
+| Model ID               | Name                     | Capabilities                             |
+| :--------------------- | :----------------------- | :--------------------------------------- |
+| `qwen/qwen3.8-flash`   | Qwen 3.8 Flash (Default) | Fast reasoning, web search, tool calling |
+| `minimax/MiniMax-M2.5` | MiniMax M2.5             | Deep reasoning, high context window      |
+| `gpt-oss-120b`         | GPT-OSS 120B             | Large open-weights reasoning model       |
+| `zai/glm-5.3-flash`    | GLM 5.3 Flash            | Fast general assistance                  |
 
 ---
 
@@ -108,12 +108,14 @@ Models are defined in [`lib/models.ts`](lib/models.ts):
 Conversations and projects are stored in `chat.db` with WAL mode enabled:
 
 ### `folders` Table
+
 - `id` (TEXT, Primary Key)
 - `name` (TEXT)
 - `created_at` (INTEGER)
 - `updated_at` (INTEGER)
 
 ### `chats` Table
+
 - `id` (TEXT, Primary Key)
 - `title` (TEXT)
 - `model` (TEXT)
@@ -122,6 +124,7 @@ Conversations and projects are stored in `chat.db` with WAL mode enabled:
 - `updated_at` (INTEGER)
 
 ### `messages` Table
+
 - `id` (TEXT, Primary Key)
 - `chat_id` (TEXT, Foreign Key -> chats.id, ON DELETE CASCADE)
 - `role` (TEXT: `user` | `assistant`)
@@ -134,14 +137,14 @@ Conversations and projects are stored in `chat.db` with WAL mode enabled:
 
 Every assistant message is a list of typed parts. [`components/chat-message.tsx`](components/chat-message.tsx) renders each part according to its type:
 
-| Part Type | Component | Description |
-| :--- | :--- | :--- |
-| `reasoning` | [`reasoning-part.tsx`](components/parts/reasoning-part.tsx) | Live pulsing reasoning step while thinking; collapses into a thought process accordion. |
-| `text` | [`text-part.tsx`](components/parts/text-part.tsx) | GitHub-flavored markdown with code syntax highlighting. |
-| `tool-web_search` | [`web-search-part.tsx`](components/parts/web-search-part.tsx) | Status indicators during web search execution. |
-| `source-url` / search results | [`sources-part.tsx`](components/parts/sources-part.tsx) | Expandable sources list (default closed) at the bottom of the response with numbered citation cards and previews. |
-| `tool-github_repo` | [`github-repo-part.tsx`](components/parts/github-repo-part.tsx) | Repository metrics (stars, forks, primary language). |
-| `tool-ask_user` | [`ask-user-part.tsx`](components/parts/ask-user-part.tsx) | Clarifying multiple-choice questionnaire answered directly in the UI. |
+| Part Type                     | Component                                                       | Description                                                                                                       |
+| :---------------------------- | :-------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| `reasoning`                   | [`reasoning-part.tsx`](components/parts/reasoning-part.tsx)     | Live pulsing reasoning step while thinking; collapses into a thought process accordion.                           |
+| `text`                        | [`text-part.tsx`](components/parts/text-part.tsx)               | GitHub-flavored markdown with code syntax highlighting.                                                           |
+| `tool-web_search`             | [`web-search-part.tsx`](components/parts/web-search-part.tsx)   | Status indicators during web search execution.                                                                    |
+| `source-url` / search results | [`sources-part.tsx`](components/parts/sources-part.tsx)         | Expandable sources list (default closed) at the bottom of the response with numbered citation cards and previews. |
+| `tool-github_repo`            | [`github-repo-part.tsx`](components/parts/github-repo-part.tsx) | Repository metrics (stars, forks, primary language).                                                              |
+| `tool-ask_user`               | [`ask-user-part.tsx`](components/parts/ask-user-part.tsx)       | Clarifying multiple-choice questionnaire answered directly in the UI.                                             |
 
 ---
 
