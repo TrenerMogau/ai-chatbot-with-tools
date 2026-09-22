@@ -1,103 +1,159 @@
-# chatbot-template
+# Full-Featured AI Chatbot Platform
 
-A minimal chatbot template built with Next.js, the [AI SDK](https://ai-sdk.dev), [shadcn/ui](https://ui.shadcn.com), [shadcn/react](https://ui.shadcn.com/docs/react/message-scroller), [shadcn/typeset](https://ui.shadcn.com/docs/typeset) and the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway).
-
-<p>
-  <a href="https://github.com/shadcn-ui/chatbot-template/stargazers"><img src="https://shieldcn.dev/github/stars/shadcn-ui/chatbot-template.svg?variant=secondary&size=xs" alt="GitHub stars" /></a>
-  <a href="https://github.com/shadcn-ui/chatbot-template/forks"><img src="https://shieldcn.dev/github/forks/shadcn-ui/chatbot-template.svg?variant=secondary&size=xs" alt="GitHub forks" /></a>
-  <a href="https://github.com/shadcn-ui/chatbot-template/blob/main/LICENSE"><img src="https://shieldcn.dev/github/license/shadcn-ui/chatbot-template.svg?variant=secondary&size=xs" alt="License" /></a>
-</p>
+A production-ready AI chatbot platform built with Next.js 16 (Turbopack), [AI SDK 4](https://ai-sdk.dev), [shadcn/ui](https://ui.shadcn.com), SQLite persistence, and [KodeKloud AI Playground](https://api.ai.kodekloud.com).
 
 ## Features
 
-- Streaming chat with markdown rendering and shadcn/typeset
-- Tool calling example
-- Web search via each provider's built-in search tool
-- Human-in-the-loop questionnaire. The model can ask clarifying questions, answered with the shadcn questionnaire component
+- 🧠 **Chain of Thought Reasoning**: Full support for reasoning models (e.g. Qwen, DeepSeek). Features live pulsing status during thinking and an accordion displaying the complete thought process.
+- 📁 **Projects & Folders Organization**: Group chats into collapsible project folders with quick creation, renaming, deletion, and folder transfer.
+- 💬 **Full Chat Management**: Inline chat renaming, safe deletion, and auto-generated conversation titles via background AI summarization.
+- ✏️ **Latest Prompt Editing & Copying**: One-click prompt copying and inline prompt editing with history truncation and re-streaming.
+- 🔄 **Assistant Response Actions**:
+  - Copy response text to clipboard.
+  - Interactive Like and Dislike feedback toggles.
+  - Response regeneration (scoped to the latest assistant response).
+- 🌐 **Expandable Search Sources**: Real-time Tavily web search with an expandable sources accordion (default closed) featuring domain tags, snippet previews, and direct links.
+- 🛡️ **Interrupted Turn Recovery**: If the page is refreshed while the model is thinking or streaming, the conversation safely detects the interrupted state and provides a "Generate response" button to seamlessly resume.
+- 💾 **Local SQLite Persistence**: High-performance, zero-config local storage with WAL mode, foreign keys, and self-healing schema migrations.
+- 🛠️ **Human-in-the-Loop & Tool Calling**: Interactive `ask_user` questions pinned to the chat viewport, GitHub repository inspection, and web search.
 
-## Deploy
+---
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fshadcn-ui%2Fchatbot-template&project-name=chatbot-template&repository-name=chatbot-template)
+## Getting Started
 
-That's it — no configuration needed. Vercel deployments authenticate to the AI Gateway automatically via OIDC, and usage runs on your team's [AI Gateway credits](https://vercel.com/docs/ai-gateway/pricing).
-
-## Local development
-
-```bash
-pnpm install
-```
-
-Then give the app a gateway credential, either by pulling an OIDC token from your linked Vercel project:
-
-```bash
-vercel link
-vercel env pull
-```
-
-or by creating an API key in the Vercel dashboard (**AI Gateway → API Keys**) and adding it to `.env.local`:
+### 1. Installation
 
 ```bash
-cp .env.example .env.local
-# then set AI_GATEWAY_API_KEY=...
+npm install
 ```
 
-Start the dev server:
+### 2. Environment Configuration
+
+Create a `.env.local` file in the root directory:
+
+```env
+# KodeKloud AI Gateway
+KODEKLOUD_BASE_URL="https://api.ai.kodekloud.com/v1"
+KODEKLOUD_API_KEY="your_kodekloud_api_key"
+
+# Tavily Web Search (for live web browsing)
+TAVILY_API_KEY="your_tavily_api_key"
+TAVILY_SEARCH_BASE_URL="https://api.tavily.com/search"
+```
+
+### 3. Development Server
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
-## Configuration
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-| Env var              | Required       | Description                                                  |
-| -------------------- | -------------- | ------------------------------------------------------------ |
-| `AI_GATEWAY_API_KEY` | Local dev only | AI Gateway API key. Not needed on Vercel deployments (OIDC). |
+---
 
-The model list lives in [lib/models.ts](lib/models.ts) — the first entry is the default model.
+## Available Models
 
-## Security
+Models are defined in [`lib/models.ts`](lib/models.ts):
 
-The `/api/chat` route is **public and unauthenticated** — every request spends your AI Gateway credits. That's fine for a personal demo, but before putting it in front of real traffic you should:
+| Model ID | Name | Capabilities |
+| :--- | :--- | :--- |
+| `qwen/qwen3.8-flash` | Qwen 3.8 Flash (Default) | Fast reasoning, web search, tool calling |
+| `minimax/MiniMax-M2.5` | MiniMax M2.5 | Deep reasoning, high context window |
+| `gpt-oss-120b` | GPT-OSS 120B | Large open-weights reasoning model |
+| `zai/glm-5.3-flash` | GLM 5.3 Flash | Fast general assistance |
 
-- **Rate limit it.** Add [Vercel Firewall / WAF](https://vercel.com/docs/security/vercel-waf) rules or [`@upstash/ratelimit`](https://github.com/upstash/ratelimit-js) so a single client can't drain your credits (denial-of-wallet).
-- **Cap spend.** Set an [AI Gateway spend limit](https://vercel.com/docs/ai-gateway/observability-and-spend/budgets) as a backstop.
-- **Add auth** if the chatbot isn't meant to be public.
+---
 
-The route already validates the request body, restricts models to [lib/models.ts](lib/models.ts), caps output tokens and step count, and aborts generation on client disconnect — but those bound a single request, not overall volume.
+## Architecture & Code Structure
 
-## How it works
-
-- [app/api/chat/route.ts](app/api/chat/route.ts) streams responses with `streamText`
-- [components/chat.tsx](components/chat.tsx) renders the conversation with `useChat` and shadcn chat primitives.
-- [tools/](tools) defines the tools — one file per tool (the filename is the model-facing tool name), composed in [tools/index.ts](tools/index.ts): a server-executed GitHub repo lookup, the interactive `ask_user` questionnaire, and provider-native web search.
-
-## Tool parts
-
-Assistant messages are a list of typed parts. [components/chat-message.tsx](components/chat-message.tsx) switches on `part.type` and delegates each one to a component in [components/parts/](components/parts):
-
-| Part type          | Component                                                          | Renders                                                                                                                                       |
-| ------------------ | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `text`             | [text-part.tsx](components/parts/text-part.tsx)                   | Markdown via react-markdown and shadcn/typeset.                                                                                                |
-| `tool-github_repo` | [github-repo-part.tsx](components/parts/github-repo-part.tsx)     | A spinner while the lookup runs, then a linked stat line (stars, forks, language).                                                             |
-| `tool-web_search`  | [web-search-part.tsx](components/parts/web-search-part.tsx)       | A "Searching the web…" status while the search runs, then a persistent "Searched the web" line per search.                                     |
-| `tool-ask_user`    | [ask-user-part.tsx](components/parts/ask-user-part.tsx)           | The answered questions inline. Pending questions render in [question-card.tsx](components/question-card.tsx), pinned to the scroller bottom.   |
-| `source-url`       | [sources-part.tsx](components/parts/sources-part.tsx)             | Web search citations, deduped into a "Searched N websites" drawer once the message finishes streaming.                                         |
-
-Tool parts move through states as the stream progresses — `input-streaming` → `input-available` → `output-available` (or `output-error`) — and each component switches on `part.state` to show progress, results, and failures.
-
-### Adding your own tool
-
-1. Create `tools/<name>.ts` (the filename is the model-facing tool name) exporting a `tool()` with a `description`, an `inputSchema`, and an `execute` function (omit `execute` for tools the user answers in the UI, like `ask_user`), then register it in [tools/index.ts](tools/index.ts).
-2. Add a part component in [components/parts/](components/parts) and a `case "tool-<name>"` in [chat-message.tsx](components/chat-message.tsx).
-
-Message types are inferred from the tool definitions via `InferUITools`, so `part.input` and `part.output` are fully typed in your part component — renaming a tool field is a build error, not a silent `undefined`.
-
-## Adding components
-
-```bash
-npx shadcn@latest add button
 ```
+├── app/
+│   ├── api/
+│   │   ├── chat/             # Chat streaming endpoint with reasoning middleware
+│   │   ├── chat/title/       # First-turn chat title generator
+│   │   ├── chats/[id]/       # Chat rename, move to project, and delete
+│   │   └── folders/          # Projects/Folders CRUD endpoints
+│   ├── chat/[id]/            # Saved conversation view
+│   ├── layout.tsx            # Global layout with persistent sidebar
+│   └── page.tsx              # Root new chat page
+├── components/
+│   ├── ai/
+│   │   └── chain-of-thought.tsx # Shadcn reasoning collapsible component
+│   ├── parts/
+│   │   ├── reasoning-part.tsx   # Model thought process presentation
+│   │   ├── sources-part.tsx     # Expandable web search sources drawer/cards
+│   │   ├── web-search-part.tsx   # Web search status indicator
+│   │   ├── github-repo-part.tsx  # GitHub repository metadata card
+│   │   ├── ask-user-part.tsx     # Interactive questionnaire responses
+│   │   └── text-part.tsx         # Markdown rendering with syntax highlighting
+│   ├── chat.tsx              # Main chat engine with useChat integration
+│   ├── chat-message.tsx      # User/Assistant message bubbles & action bars
+│   └── sidebar.tsx           # Projects & conversation history navigation
+├── lib/
+│   ├── db.ts                 # Better-SQLite3 database schema & helper methods
+│   ├── kodekloud.ts          # AI gateway client & SSE stream transformer
+│   ├── models.ts             # Supported model definitions
+│   └── utils.ts              # Styling utilities and chat title formatting
+└── tools/
+    ├── web_search.ts         # Tavily live web search tool
+    ├── github_repo.ts        # GitHub repository inspector tool
+    ├── ask_user.ts           # Human-in-the-loop interactive tool
+    └── index.ts              # Tool registry and UI message types
+```
+
+---
+
+## Database Schema (SQLite)
+
+Conversations and projects are stored in `chat.db` with WAL mode enabled:
+
+### `folders` Table
+- `id` (TEXT, Primary Key)
+- `name` (TEXT)
+- `created_at` (INTEGER)
+- `updated_at` (INTEGER)
+
+### `chats` Table
+- `id` (TEXT, Primary Key)
+- `title` (TEXT)
+- `model` (TEXT)
+- `folder_id` (TEXT, Foreign Key -> folders.id, ON DELETE SET NULL)
+- `created_at` (INTEGER)
+- `updated_at` (INTEGER)
+
+### `messages` Table
+- `id` (TEXT, Primary Key)
+- `chat_id` (TEXT, Foreign Key -> chats.id, ON DELETE CASCADE)
+- `role` (TEXT: `user` | `assistant`)
+- `parts` (TEXT: JSON serialized array of typed message parts)
+- `created_at` (INTEGER)
+
+---
+
+## Tool Parts & Message Streaming
+
+Every assistant message is a list of typed parts. [`components/chat-message.tsx`](components/chat-message.tsx) renders each part according to its type:
+
+| Part Type | Component | Description |
+| :--- | :--- | :--- |
+| `reasoning` | [`reasoning-part.tsx`](components/parts/reasoning-part.tsx) | Live pulsing reasoning step while thinking; collapses into a thought process accordion. |
+| `text` | [`text-part.tsx`](components/parts/text-part.tsx) | GitHub-flavored markdown with code syntax highlighting. |
+| `tool-web_search` | [`web-search-part.tsx`](components/parts/web-search-part.tsx) | Status indicators during web search execution. |
+| `source-url` / search results | [`sources-part.tsx`](components/parts/sources-part.tsx) | Expandable sources list (default closed) at the bottom of the response with numbered citation cards and previews. |
+| `tool-github_repo` | [`github-repo-part.tsx`](components/parts/github-repo-part.tsx) | Repository metrics (stars, forks, primary language). |
+| `tool-ask_user` | [`ask-user-part.tsx`](components/parts/ask-user-part.tsx) | Clarifying multiple-choice questionnaire answered directly in the UI. |
+
+---
+
+## Scripts
+
+- `npm run dev` - Starts Next.js development server with Turbopack.
+- `npm run build` - Builds production bundle and validates route definitions.
+- `npm run typecheck` - Validates TypeScript types across the entire codebase.
+- `npm run lint` - Runs ESLint.
+
+---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT
